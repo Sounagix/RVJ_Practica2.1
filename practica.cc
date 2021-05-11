@@ -22,7 +22,7 @@
     int rc = getaddrinfo(argv[1],argv[2],&hints,&result);
 
     if(rc != 0){
-        std::cerr << "[getaddrinfo]" << gai_strerror(rc) << std::endl;
+        std::cerr << "[getaddrinfo] " << gai_strerror(rc) << std::endl;
         return -1;
     }
 
@@ -48,7 +48,7 @@
         struct sockaddr cliente;
         socklen_t size = sizeof(struct sockaddr);
         ssize_t bitsDevueltos = recvfrom(sd,mensaje,100-1,0,&cliente,&size);
-        if(bitsDevueltos > 0){
+        if(bitsDevueltos == -1){
             std::cerr << "[recvfrom] el numero de bits devueltos son menores a 0" << std::endl;
             return -1;
         }
