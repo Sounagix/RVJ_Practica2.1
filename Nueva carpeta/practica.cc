@@ -18,9 +18,8 @@
 
     hints.ai_family = AF_INET;          //ipv4
     hints.ai_socktype = SOCK_STREAM;    //TCP
-    
-    int rc = getaddrinfo(argv[1],argv[2],&hints,&result);
 
+    int rc = getaddrinfo(argv[1],argv[2],&hints,&result);
 
     if(rc != 0){
         std::cerr << "[getaddrinfo] " << gai_strerror(rc) << std::endl;
@@ -35,33 +34,25 @@
         return -1;
     }
 
-    //  Cliente se al servidor
-    int serConec = connect(sd ,result->ai_addr ,result->ai_addrlen );
-    if(serConec == -1){
-        std::cerr << "[Connect] No se ha podido conectar al servidor" << std::endl;
+    // Asignar un nombre a un socket = -1 ha fallado en el linkeo
+    if(bind(sd,result->ai_addr,result->ai_addrlen) == -1){
+        std::cerr << "[Bind] Error al asignar el nombre" << std::endl;
         return -1;
     }
 
+    int lt = listen(sd,1);
+    if(lt == -1){
+        std::cerr << "[Listen] Solo se puede conectar un cliente" << std::endl;
+        return -1;
+    }
 
-    // // Asignar un nombre a un socket = -1 ha fallado en el linkeo
-    // if(bind(sd,result->ai_addr,result->ai_addrlen) == -1){
-    //     std::cerr << "[Bind] Error al asignar el nombre" << std::endl;
-    //     return -1;
-    // }
-
-    // int lt = listen(sd,1);
-    // if(lt == -1){
-    //     std::cerr << "[Listen] Solo se puede conectar un cliente" << std::endl;
-    //     return -1;
-    // }
-
-    //struct sockaddr cliente;
-    //socklen_t tam = sizeof(struct sockaddr);
-    // int ap = accept(sd ,&cliente ,&tam );
-    // if(ap == -1){
-    //     std::cerr << "[Accept] No se ha podido establecer conección" << std::endl;
-    //     return -1;
-    // }
+    struct sockaddr cliente;
+    socklen_t size = sizeof(struct sockaddr);
+    int ap = accept(sd ,&cliente ,&size );
+    if(ap == -1){
+        std::cerr << "[Accept] No se ha podido establecer conección" << std::endl;
+        return -1;
+    }
 
     bool run = true;
     char mensaje [100];
@@ -69,26 +60,17 @@
     char host[NI_MAXHOST];
     //  El puerto del cliente
     char serv[NI_MAXSERV];
-    //getnameinfo(&cliente,tam,host,NI_MAXHOST,serv,NI_MAXSERV,NI_NUMERICHOST);
+    getnameinfo(&cliente,size,host,NI_MAXHOST,serv,NI_MAXSERV,NI_NUMERICHOST);
     std::cout << "Conexión desde " << host << " puerto " << serv << std::endl; 
-
-    std::cin >> mensaje;
     
     while (run)
     {
-        std::cin >> mensaje;
-        send(serConec,mensaje,100-1,0);
-        if(mensaje[0] == 'Q' && mensaje[1] == '\0'){
-            run = true;
-            break;
-        } 
-
-        ssize_t bitsDevueltos = recv(serConec,mensaje,100-1,0);
+        ssize_t bitsDevueltos = recv(ap,mensaje,100-1,0);
         if(bitsDevueltos == -1){
             std::cerr << "[recvfrom]" << std::endl;
             return -1;
         }
-        std::cout << mensaje << std::endl;
+        send(ap,mensaje,bitsDevueltos,0);
     }
     
     std::cout << "Conexión desde " << host << " puerto " << serv << " cerrada." << std::endl; 
