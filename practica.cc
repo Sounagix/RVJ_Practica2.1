@@ -34,55 +34,61 @@
         return -1;
     }
 
-    // Asignar un nombre a un socket = -1 ha fallado en el linkeo
-    if(bind(sd,result->ai_addr,result->ai_addrlen) == -1){
-        std::cerr << "[Bind] Error al asignar el nombre" << std::endl;
-        return -1;
-    }
+    // // Asignar un nombre a un socket = -1 ha fallado en el linkeo
+    // if(bind(sd,result->ai_addr,result->ai_addrlen) == -1){
+    //     std::cerr << "[Bind] Error al asignar el nombre" << std::endl;
+    //     return -1;
+    // }
 
-    bool run = true;
     char mensaje [100];
-    time_t currTime;
-    size_t timeSize;
-    while(run){
-        struct sockaddr cliente;
-        socklen_t size = sizeof(struct sockaddr);
-        ssize_t bitsDevueltos = recvfrom(sd,mensaje,100-1,0,&cliente,&size);
-        if(bitsDevueltos == -1){
-            std::cerr << "[recvfrom] el numero de bits devueltos son menores a 0" << std::endl;
-            return -1;
-        }
-        // Ip del cliente
-        char host[NI_MAXHOST];
-        //  El puerto del cliente
-        char serv[NI_MAXSERV];
-        getnameinfo(&cliente,size,host,NI_MAXHOST,serv,NI_MAXSERV,NI_NUMERICHOST);
-        std::cout << bitsDevueltos << "Bits devueltos " << host << serv << std::endl;
+    sendto(sd ,argv[3] ,strlen(argv[3])+1 ,0 ,result->ai_addr ,result->ai_addrlen );
+    recvfrom(sd ,mensaje, 100-1 ,0 ,result->ai_addr ,&result->ai_addrlen);
+    std::cout << "Mensaje " << mensaje << std::endl;
 
-        switch(mensaje[0]){
-            case 'q':
-                run = false;
-                std::cout << "Cierre de la app" << std::endl;
-            break;
-            // Devolvemos la fecha
-            case 't':
-                time(&currTime);
-                //  Tamaño de la fecha
-                timeSize = strftime(mensaje,100 - 1,"%T %p",localtime(&currTime));
-                sendto(sd,mensaje,timeSize,0,&cliente,size);
-            break;
-            //  Devolvemos la hora
-            case 'd':
-                time(&currTime);
-                //  Tamaño de la fecha
-                timeSize = strftime(mensaje,100 - 1,"%F",localtime(&currTime));
-                sendto(sd,mensaje,timeSize,0,&cliente,size);
-            break;
-            default:
-                std::cout << "El comando " << mensaje[0] << " no soportado \n";
-            break;
-        }
-    }
+
+
+    // bool run = true;
+    // time_t currTime;
+    // size_t timeSize;
+    // while(run){
+    //     struct sockaddr cliente;
+    //     socklen_t size = sizeof(struct sockaddr);
+    //     ssize_t bitsDevueltos = recvfrom(sd,mensaje,100-1,0,&cliente,&size);
+    //     if(bitsDevueltos == -1){
+    //         std::cerr << "[recvfrom]" << std::endl;
+    //         return -1;
+    //     }
+    //     // Ip del cliente
+    //     char host[NI_MAXHOST];
+    //     //  El puerto del cliente
+    //     char serv[NI_MAXSERV];
+    //     getnameinfo(&cliente,size,host,NI_MAXHOST,serv,NI_MAXSERV,NI_NUMERICHOST);
+    //     std::cout << bitsDevueltos << "Bits devueltos " << host << serv << std::endl;
+
+    //     switch(mensaje[0]){
+    //         case 'q':
+    //             run = false;
+    //             std::cout << "Cierre de la app" << std::endl;
+    //         break;
+    //         // Devolvemos la fecha
+    //         case 't':
+    //             time(&currTime);
+    //             //  Tamaño de la fecha
+    //             timeSize = strftime(mensaje,100 - 1,"%T %p",localtime(&currTime));
+    //             sendto(sd,mensaje,timeSize,0,&cliente,size);
+    //         break;
+    //         //  Devolvemos la hora
+    //         case 'd':
+    //             time(&currTime);
+    //             //  Tamaño de la fecha
+    //             timeSize = strftime(mensaje,100 - 1,"%F",localtime(&currTime));
+    //             sendto(sd,mensaje,timeSize,0,&cliente,size);
+    //         break;
+    //         default:
+    //             std::cout << "El comando " << mensaje[0] << " no soportado \n";
+    //         break;
+    //     }
+    // }
 
     close(sd);
 
