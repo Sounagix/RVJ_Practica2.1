@@ -72,23 +72,24 @@
     //getnameinfo(&cliente,tam,host,NI_MAXHOST,serv,NI_MAXSERV,NI_NUMERICHOST);
     std::cout << "Conexión desde " << host << " puerto " << serv << std::endl; 
 
-    std::cin >> mensaje;
     
     while (run)
     {
         std::cin >> mensaje;
         send(serConec,mensaje,100-1,0);
         if(mensaje[0] == 'Q' && mensaje[1] == '\0'){
-            run = true;
+            run = false;
             break;
         } 
 
-        ssize_t bitsDevueltos = recv(serConec,mensaje,100-1,0);
-        if(bitsDevueltos == -1){
-            std::cerr << "[recvfrom]" << std::endl;
-            return -1;
-        }
+        //ssize_t bitsDevueltos = 
+        recv(serConec,mensaje,100-1,0);
+        // if(bitsDevueltos == -1){
+        //     std::cerr << "[recvfrom]" << std::endl;
+        //     return -1;
+        // }
         std::cout << mensaje << std::endl;
+        //std::cin >> mensaje;
     }
     
     std::cout << "Conexión desde " << host << " puerto " << serv << " cerrada." << std::endl; 
