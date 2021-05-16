@@ -8,6 +8,65 @@
 #include <iostream>
 #include <time.h>
 #include <unistd.h>
+#include <thread>
+
+const int MAX_THREAD = 10;
+
+class MessageManager{
+    private:
+    int socketClient;
+    int idClient;
+
+    public:
+    MessageManager(int socketClient_,int idClient_) : socketClient(socketClient_),idClient(idClient_){};
+
+    void conectClient(){
+
+        char message[100];
+        char host[NI_MAXHOST];
+        char server[NI_MAXSERV];
+        time_t timer;
+        size_t size;
+        struct sockaddr client;
+        socklen_t clientSize = sizeof(client);
+        
+        bool active = true;
+
+        while (active)
+        {
+            sleep(3);
+            ssize_t bytes = recvfrom(socketClient,message,99 * sizeof(char),0,&client,&clientSize);
+            message[100] = '\0';
+            if(bytes == -1){
+                std::cerr << "[recvfrom] El número de bits recibidos es incorrectos" << "\n";
+                active = false;
+                return;
+            }
+            getnameinfo(&client, clientSize, host, NI_MAXHOST, server, NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV);
+            std::cout << "Bytes recibidos " << bytes << " del " << host << ". Thread " << std::this_thread::get_id() << std::endl; 
+             
+            switch(message[0]){
+
+                case 'd':
+                    time(&timer);
+                    size = strftime(message ,99 ,"%F" ,localtime(&timer) );
+                    sendto(socketClient ,message ,size ,0 ,&client ,clientSize);
+                break;
+                case 't':
+                    time(&timer);
+                    size = strftime(message ,99 ,"%T %p" ,localtime(&timer) );
+                    sendto(socketClient ,message ,size ,0 ,&client ,clientSize);
+                break;
+                default:
+                    std::cout << "El comando " << message[0] << " no está soportado \n";
+                    sendto(socketClient ,"Comando no soportado\n" ,19 ,0 ,&client ,clientSize);
+                break; 
+            }
+        }
+        
+    }
+};
+
 
  int main(int argc, char** argv){
            
@@ -16,8 +75,8 @@
 
     memset((void *)&hints, 0, sizeof(struct addrinfo));
 
-    hints.ai_family = AF_INET;          //ipv4
-    hints.ai_socktype = SOCK_STREAM;    //TCP
+    hints.ai_family = AF_INET;         //Para ipv4
+    hints.ai_socktype = SOCK_DGRAM;    //Para UDP
     
     int rc = getaddrinfo(argv[1],argv[2],&hints,&result);
 
@@ -31,132 +90,29 @@
     int sd = socket(result->ai_family,result->ai_socktype,0);
 
     if(sd == -1){
-        std::cerr << "[Socket] creación de socket" << std::endl;
+        std::cerr << "[Socket] Error en la creación del socket" << std::endl;
         return -1;
     }
 
-    //  Cliente se al servidor
-    int serConec = connect(sd ,result->ai_addr ,result->ai_addrlen );
-    if(serConec == -1){
-        std::cerr << "[Connect] No se ha podido conectar al servidor" << std::endl;
+    if(bind(sd,result->ai_addr,result->ai_addrlen) == -1){
+        std::cerr << "[bind] Error" << std::endl;
         return -1;
     }
 
-
-    // // Asignar un nombre a un socket = -1 ha fallado en el linkeo
-    // if(bind(sd,result->ai_addr,result->ai_addrlen) == -1){
-    //     std::cerr << "[Bind] Error al asignar el nombre" << std::endl;
-    //     return -1;
-    // }
-
-    // int lt = listen(sd,1);
-    // if(lt == -1){
-    //     std::cerr << "[Listen] Solo se puede conectar un cliente" << std::endl;
-    //     return -1;
-    // }
-
-    //struct sockaddr cliente;
-    //socklen_t tam = sizeof(struct sockaddr);
-    // int ap = accept(sd ,&cliente ,&tam );
-    // if(ap == -1){
-    //     std::cerr << "[Accept] No se ha podido establecer conección" << std::endl;
-    //     return -1;
-    // }
-
-    bool run = true;
-    char mensaje [100];
-    //  Ip del cliente
-    char host[NI_MAXHOST];
-    //  El puerto del cliente
-    char serv[NI_MAXSERV];
-    //getnameinfo(&cliente,tam,host,NI_MAXHOST,serv,NI_MAXSERV,NI_NUMERICHOST);
-    std::cout << "Conexión desde " << host << " puerto " << serv << std::endl; 
-
-    
-    while (run)
+    for(int i = 0; i < 10 ;i++){
+        MessageManager *m = new MessageManager(sd,i);
+        std::thread([&m]() {m->conectClient(); delete m; }).detach();
+    } 
+    std::string key = "";
+    while (key != "q")
     {
-        std::cin >> mensaje;
-        send(serConec,mensaje,100-1,0);
-        if(mensaje[0] == 'Q' && mensaje[1] == '\0'){
-            run = false;
-            break;
-        } 
-
-        //ssize_t bitsDevueltos = 
-        recv(serConec,mensaje,100-1,0);
-        // if(bitsDevueltos == -1){
-        //     std::cerr << "[recvfrom]" << std::endl;
-        //     return -1;
-        // }
-        std::cout << mensaje << std::endl;
-        //std::cin >> mensaje;
+        std::cin >> key;
     }
+
+    std::cout << "Cierre de conexión\n";
     
-    std::cout << "Conexión desde " << host << " puerto " << serv << " cerrada." << std::endl; 
-
-
-
-
-    // sendto(sd ,argv[3] ,strlen(argv[3])+1 ,0 ,result->ai_addr ,result->ai_addrlen );
-    // recvfrom(sd ,mensaje, 100-1 ,0 ,result->ai_addr ,&result->ai_addrlen);
-    // std::cout << "Mensaje " << mensaje << std::endl;
-
-
-
-    // bool run = true;
-    // time_t currTime;
-    // size_t timeSize;
-    // while(run){
-    //     struct sockaddr cliente;
-    //     socklen_t size = sizeof(struct sockaddr);
-    //     ssize_t bitsDevueltos = recvfrom(sd,mensaje,100-1,0,&cliente,&size);
-    //     if(bitsDevueltos == -1){
-    //         std::cerr << "[recvfrom]" << std::endl;
-    //         return -1;
-    //     }
-    //     // Ip del cliente
-    //     char host[NI_MAXHOST];
-    //     //  El puerto del cliente
-    //     char serv[NI_MAXSERV];
-    //     getnameinfo(&cliente,size,host,NI_MAXHOST,serv,NI_MAXSERV,NI_NUMERICHOST);
-    //     std::cout << bitsDevueltos << "Bits devueltos " << host << serv << std::endl;
-
-    //     switch(mensaje[0]){
-    //         case 'q':
-    //             run = false;
-    //             std::cout << "Cierre de la app" << std::endl;
-    //         break;
-    //         // Devolvemos la fecha
-    //         case 't':
-    //             time(&currTime);
-    //             //  Tamaño de la fecha
-    //             timeSize = strftime(mensaje,100 - 1,"%T %p",localtime(&currTime));
-    //             sendto(sd,mensaje,timeSize,0,&cliente,size);
-    //         break;
-    //         //  Devolvemos la hora
-    //         case 'd':
-    //             time(&currTime);
-    //             //  Tamaño de la fecha
-    //             timeSize = strftime(mensaje,100 - 1,"%F",localtime(&currTime));
-    //             sendto(sd,mensaje,timeSize,0,&cliente,size);
-    //         break;
-    //         default:
-    //             std::cout << "El comando " << mensaje[0] << " no soportado \n";
-    //         break;
-    //     }
-    // }
 
     close(sd);
-
-    // for (auto i = result; i != NULL; i = i->ai_next) {
-
-
-    //     getnameinfo(i->ai_addr,i->ai_addrlen,host,NI_MAXHOST,serv
-    //     ,NI_MAXSERV,NI_NUMERICHOST);
-
-    //     std::cout <<host <<" " << i->ai_family <<" "<<i->ai_socktype <<std::endl;
-
-    // } 
     freeaddrinfo(result);
     return 0; 
 }
