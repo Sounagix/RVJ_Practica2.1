@@ -11,58 +11,34 @@
 #include <thread>
 
 const int MAX_THREAD = 10;
-
+const int MAX_LISTEN = 10;
 class MessageManager{
     private:
     int socketClient;
-    int idClient;
+    //int idClient;
 
     public:
-    MessageManager(int socketClient_,int idClient_) : socketClient(socketClient_),idClient(idClient_){};
+    MessageManager(int socketClient_) : socketClient(socketClient_){};
 
     void conectClient(){
 
-        char message[100];
-        char host[NI_MAXHOST];
-        char server[NI_MAXSERV];
-        time_t timer;
-        size_t size;
-        struct sockaddr client;
-        socklen_t clientSize = sizeof(client);
-        
+        char message[100];        
         bool active = true;
 
         while (active)
         {
-            sleep(3);
-            ssize_t bytes = recvfrom(socketClient,message,99 * sizeof(char),0,&client,&clientSize);
-            message[100] = '\0';
-            if(bytes == -1){
+            
+            ssize_t bytes = recv(socketClient,message,99 * sizeof(char),0);
+            
+            if(bytes <= 0){
                 std::cerr << "[recvfrom] El número de bits recibidos es incorrectos" << "\n";
                 active = false;
-                return;
+                continue;
             }
-            getnameinfo(&client, clientSize, host, NI_MAXHOST, server, NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV);
-            std::cout << "Bytes recibidos " << bytes << " del " << host << ". Thread " << std::this_thread::get_id() << std::endl; 
-             
-            switch(message[0]){
 
-                case 'd':
-                    time(&timer);
-                    size = strftime(message ,99 ,"%F" ,localtime(&timer) );
-                    sendto(socketClient ,message ,size ,0 ,&client ,clientSize);
-                break;
-                case 't':
-                    time(&timer);
-                    size = strftime(message ,99 ,"%T %p" ,localtime(&timer) );
-                    sendto(socketClient ,message ,size ,0 ,&client ,clientSize);
-                break;
-                default:
-                    std::cout << "El comando " << message[0] << " no está soportado \n";
-                    sendto(socketClient ,"Comando no soportado\n" ,19 ,0 ,&client ,clientSize);
-                break; 
-            }
+            send(socketClient ,message ,bytes ,0);
         }
+        close(socketClient);
         
     }
 };
@@ -99,18 +75,32 @@ class MessageManager{
         return -1;
     }
 
-    for(int i = 0; i < 10 ;i++){
-        MessageManager *m = new MessageManager(sd,i);
-        std::thread([&m]() {m->conectClient(); delete m; }).detach();
-    } 
-    std::string key = "";
-    while (key != "q")
-    {
-        std::cin >> key;
+    if(listen(sd, MAX_LISTEN) == -1){
+        std::cerr << "[Listen] Error\n";
+        return -1;
     }
 
-    std::cout << "Cierre de conexión\n";
-    
+
+    bool servActive = true;
+
+    while (servActive)
+    {   
+        char host[NI_MAXHOST];
+        char serv[NI_MAXSERV];
+
+        struct sockaddr client;
+        socklen_t clientSize = sizeof(client);
+        int sockClient = accept(sd ,&client ,&clientSize);
+        if(sockClient == -1){
+            std::cerr << "[accept] Error al conectar\n";
+        }
+        
+        getnameinfo(&client ,clientSize ,host ,NI_MAXHOST, serv ,NI_MAXSERV ,NI_NUMERICHOST | NI_NUMERICSERV);
+        std::cout << "Conexión establecida con " << host << std::endl;
+
+        MessageManager* m = new MessageManager(sockClient);
+        std::thread([&m]() {m->conectClient(); delete m;});
+    }    
 
     close(sd);
     freeaddrinfo(result);
