@@ -16,8 +16,8 @@
 
     memset((void *)&hints, 0, sizeof(struct addrinfo));
 
-    hints.ai_family = AF_INET;          //ipv4
-    hints.ai_socktype = SOCK_STREAM;    //TCP
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
 
     int rc = getaddrinfo(argv[1],argv[2],&hints,&result);
 
